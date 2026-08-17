@@ -1,0 +1,31 @@
+[book]
+title = "dsh 源码进阶：读懂 DeepSeek Harness"
+authors = ["Javen.C"]
+language = "zh"
+src = "src"
+description = "面向已具备 Agent 基础概念的工程师，深入 DeepSeek Harness（dsh）源码，逐行讲解插件系统、事件溯源会话、推理循环、能力接缝与工程实践"
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "ayu"
+git-repository-url = "https://github.com/vacat/dsh-source-book"
+edit-url-template = "https://github.com/vacat/dsh-source-book/edit/main/{path}"
+additional-css = ["theme/custom.css"]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[output.html.search]
+enable = true
+limit-results = 30
+use-boolean-and = true
+boost-title = 2
+boost-hierarchy = 1
+boost-paragraph = 1
+expand = true
+heading-split-level = 3
+
+[output.html.fold]
+enable = true
+level = 0
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"

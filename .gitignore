@@ -1,0 +1,22 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# mdBook build output
+book/
+
+# Other build artifacts
+*.pdf
+*.epub
+node_modules/
+
+# mdbook-mermaid 生成的 mermaid 资源（CI 通过 `mdbook-mermaid install` 生成）
+mermaid.min.js
+mermaid-init.js
