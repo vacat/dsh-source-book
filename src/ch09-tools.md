@@ -24,6 +24,7 @@ export interface ToolSchema {
   name: string
   description: string
   parameters: Record<string, unknown>   // JSON Schema
+  deferLoading?: true                   // 请求把定义延后加载进模型上下文
 }
 ```
 
@@ -32,7 +33,7 @@ schema 会**加入系统提示组装**（第 13 章），让模型知道有哪�
 ## 9.2 执行模式：并行 / 排他
 
 dsh 的工具执行模式（`ToolExecutionMode`）不是简单"串行/并行"二分，而是：
-**parallel（并行）+ exclusive（排他）**。`packages/core/tools/src/types.ts`
+**parallel（并行）+ exclusive（排他）**。`packages/core/tools/src/index.ts`
 里有 `ctx.tools.executionMode(request)` 返回当前调用的模式。
 
 | 模式 | 语义 | 调度行为 |
@@ -126,9 +127,12 @@ Agent Note `2026-07-08-tool-output-spill-files`：工具输出可能超大（比
 
 ### 结果保留（tool-result retention）
 
-Agent Note `2026-07-06-tool-result-retention-library`：工具的完整结果
-不可能永远留在对话里，需要**保留策略**（何时截断、何时只留摘要）。
-这与第 14 章的压缩、token 预算联动。
+`packages/util/output-retention/README.md`
+（`@deepseek-ai/dsh-output-retention`）：工具的完整结果不可能永远留在对话里，
+需要**保留策略**——`ItemRetainer` 按条数保留列表、`TextRetainer` 按字节保留
+文本（head/tail/headTail），两者都精确报告被省略了什么。这与第 14 章的压缩、
+token 预算联动。（早期 Agent Note `2026-07-06-tool-result-retention-library`
+已于 2026-09-04 归档，只作历史。）
 
 ## 9.6 本章小结
 

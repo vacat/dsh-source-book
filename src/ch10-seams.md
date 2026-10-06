@@ -41,7 +41,7 @@ flowchart LR
     SD["Service Definition<br/>ctx.llm（LlmRuntime）"] 
     P1["Provider<br/>llm-deepseek"] --> SD
     P2["Provider<br/>llm-pi-ai"] --> SD
-    P3["Provider<br/>llm-replay"] --> SD
+    P3["Provider<br/>llm-replay（test-support）"] --> SD
     SD --> C["Consumer<br/>agent-loop / tool 层"]
 ```
 
@@ -68,15 +68,15 @@ AGENTS.md 说：*split only when roles evolve independently*（只在角色独�
 
 | 服务（Definition） | 实现（Provider） | 消费（Consumer） |
 |--------------------|------------------|------------------|
-| `ctx.llm` | llm-deepseek / llm-pi-ai / llm-replay | agent-loop、compaction-basic |
+| `ctx.llm` | llm-deepseek / llm-pi-ai（回放用的 llm-replay 在 test-support） | agent-loop、compaction-basic |
 | `ctx.shell` | bash-local / bash-sandbox / pwsh-local | tool-bash、tool-pwsh |
-| `ctx.subprocess` | subprocess-local / subprocess-e2b | bash-local、terminal |
-| `ctx.fs` | fs-local / fs-sandbox / fs-e2b | tool-fs、agent |
-| `ctx.sandbox` | sandbox-local | fs-sandbox、bash-sandbox |
-| `ctx.subagents` | subagent-*（in-process / acp / codex / claude-code） | tool-subagent、agent-loop |
-| `ctx.workflowEngine` | workflow-worker-thread | tool-workflow |
-| `ctx.compaction` | compaction-basic | agent-loop |
-| `ctx.sessionPersistence` | session-persistence-jsonl / -sqlite | session |
+| `ctx.subprocess` | subprocess-local / subprocess-ssh | bash-local、terminal-bash、lsp-stdio、subagent-* |
+| `ctx.fs` | fs-local / fs-sandbox / fs-ssh | tool-fs |
+| `ctx.sandbox` | sandbox-local / sandbox-ssh | fs-sandbox、bash-sandbox、terminal-bash |
+| `ctx.subagents` | subagent-spawn-in-process / subagent-fork-in-process / subagent-acp / subagent-codex / subagent-claude-code / subagent-dsh-sdk | tool-subagent、tool-ralph |
+| `ctx.workflowEngine` | workflow-ptc | tool-workflow、tool-ralph |
+| `ctx.compaction` | compaction-basic | compaction-basic（自消费） |
+| `ctx.sessionPersistence` | session-persistence-jsonl | session-query、hooks-*、message-feedback |
 
 **注意这张图的生成方式**：它是 `scripts/gen-doc-graphs.ts` 从各包的服务声明
 **自动生成**的（文件头有 "do not edit by hand"）。也就是说，**dsh 的架构图

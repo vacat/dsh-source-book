@@ -34,8 +34,8 @@ Agent Note `2026-06-11-event-sourced-sessions` 里：
 | 派生消息历史 | `deriveMessages()` 从日志投影出模型可见的消息 |
 
 **注意注释里的一句**：持久化是插件关注点（Persistence is a plugin concern）。
-`core/session` 只提供内存日志；落盘由 `session-persistence-jsonl` /
-`session-persistence-sqlite` 等插件订阅 `session/event` 并异步写库，
+`core/session` 只提供内存日志；落盘由 `session-persistence-jsonl` 插件订阅
+`session/event` 并异步写库，
 在回合结束时等待 `session/flush` 检查点刷盘（见第 14 章）。
 
 ## 4.3 事件词汇：`SessionEventMap`
@@ -51,16 +51,17 @@ Agent Note `2026-06-11-event-sourced-sessions` 里：
 | `turn/start` / `turn/end` | 回合边界（`turn/end` 带 `TurnEndReason`） |
 | `step/start` / `step/end` | 步骤边界 |
 | `user/message` | 用户消息 / 注入上下文（surface 事件） |
-| `assistant/chunk` | 每个流式块（token 级回放保真） |
-| `assistant/message` | 装配完成的 assistant 消息（surface 事件，派生权威） |
+| `assistant/message` | 装配完成的 assistant 消息（surface 事件，**内嵌精确带时间流**） |
+| `assistant/attempt` | 未产出消息的尝试结算（失败/重试/取消/流中断） |
 | `tool/result` | 工具结果（surface 事件） |
 | `request/header` | 请求的非历史状态（调用配置、系统提示、工具 schema） |
 | `request/context` | 请求的路由容量（provider/model/contextWindow） |
 
-**为什么连 `assistant/chunk` 都记？** 两个原因：
-1. **token 级回放保真**——UI 逐字重放、调试都依赖原始块；
-2. **权威性与原始性分离**——`assistant/message` 是派生的权威消息，
-   但原始块是更底层的真相。
+**为什么把流也记进日志？** 两个原因：
+1. **token 级回放保真**——`assistant/message` 内嵌该次请求的精确带时间流
+   （`AssistantStreamAttempt` 逐块累积），UI 逐字重放、调试都靠它；
+2. **失败的尝试也有记录**——没有产出消息的尝试（失败/重试/取消/流中断）
+   落成 `assistant/attempt`，日志里"这次尝试发生过"可查。
 
 > **AGENTS.md 关键规则**：`SessionEventMap` 的成员**默认"读了就必须知道"**
 > （required-on-read）。不认识它的构建会拒绝读取日志，除非事件携带
@@ -73,20 +74,22 @@ Agent Note `2026-06-11-event-sourced-sessions` 里：
 `packages/core/session/src/surface.ts`：
 
 ```ts
-/** 会产生模型可见消息的事件类型（surface 子集） */
+/** 会产出消息的事件联合在运行期的对应物（surface 子集） */
 const SURFACE_EVENT_TYPES = new Set<string>([
+  'system/message',
+  'developer/message',
   'user/message',
   'assistant/message',
   'tool/result',
 ])
 
-/** 一个事件能否进入模型可见表面 */
+/** 一个事件类型能否进入模型可见表面 */
 export function isSurfaceEligibleType(type: string): boolean {
   return SURFACE_EVENT_TYPES.has(type)
 }
 ```
 
-**模型可见内容只流经这三种 surface 事件**（加上 `request/header` /
+**模型可见内容只流经这五种 surface 事件**（加上 `request/header` /
 `request/context` 折叠出的非历史状态）。这条约束非常关键：
 它让"安全分析"变得可计算——第 5 章的"模型可见 ⟺ 可记录"之所以能成为
 不变量，就是因为模型能看到的入口是**封闭的**。
@@ -121,7 +124,7 @@ Agent Note `2026-07-05-reconstructable-requests` 说明它的实现要点：
 日志会跨版本演进。dsh 的版本机制（Agent Note `2026-08-10-session-log-version-mechanism`）
 有几个值得学的决策：
 
-1. **单个单调整数，不分主/次**（`SESSION_FORMAT_VERSION`，当前为 `0`）：
+1. **单个单调整数，不分主/次**（`SESSION_FORMAT_VERSION`，当前为 `4`）：
    "能不能自动升级"是**每一步 upgrader 是否存在**的属性，不该用数字形状承诺；
 2. **写者决定何时 bump，不是读者**：当"旧运行时无法正确处理新日志"时才必须
    bump；"能解析"不算数——"静默跳过会影响重建的内容"是错误读法；
@@ -134,14 +137,21 @@ Agent Note `2026-07-05-reconstructable-requests` 说明它的实现要点：
    而默认可忽略的代价是"静默恢复一个被掏空的会话"（安全失败）。dsh 选择
    前者的代价，换取后者绝不发生。
 
+> **已发布的格式世代不可改写**：一旦某个格式随产品发布（released），它就冻结成
+> "不可变的旧代（immutable prior generation）"，只能**追加**相邻的
+> `n→n+1` 转换包（仓库里的 `session-format-v0-to-v1` … `v3-to-v4` 就是这些
+> 转换），**绝不移动、覆盖或删除**已提交的世代。当前工作区写入器是 `4`、
+> 最新已定版（finalized）也是 `4`，而最新**已发布**（released）记录为 `3`
+> （依据 `docs/session-format-status.md`）。
+
 > **一句话**：版本机制的目标不是"尽量兼容"，而是"**要么正确读，要么大声拒绝**"。
 
 ## 4.7 本章小结
 
 - 会话 = 追加式事件日志，日志即真相；消息历史从日志派生；
-- `SessionEventMap` 是合并可扩展的事件词汇；`assistant/chunk` 保证 token 级回放；
-- 表面层（surface）：模型可见内容只流经 user/message、assistant/message、
-  tool/result 三种 surface 事件 + request 折叠；
+- `SessionEventMap` 是合并可扩展的事件词汇；`assistant/message` 内嵌精确带时间流保证 token 级回放，`assistant/attempt` 记录未产消息的尝试；
+- 表面层（surface）：模型可见内容只流经 system/message、developer/message、
+  user/message、assistant/message、tool/result 五种 surface 事件 + request 折叠；
 - `deriveMessages()` 单一投影函数，运行时与离线重建路径一致；
 - 版本机制：单整数、写者决定 bump、"要么正确读要么大声拒绝"、`ignorable` 标记。
 

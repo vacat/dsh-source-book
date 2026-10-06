@@ -3,7 +3,7 @@
 > **本章目标**
 > 1. 理解 cordis.yml 如何"组合"出一个运行中的 Agent 产品；
 > 2. 理解 `!!js`、overlay、config catalog 等加载细节；
-> 3. 理解 preset（agent-presets）：按会话组装不同的能力集；
+> 3. 理解 preset（agent-preset / agent-preset-registry）：按会话组装不同的能力集；
 > 4. 理解 settings / credentials 这两个面向用户的接缝。
 
 ## 17.1 配置是"组合"，不是"设置"
@@ -53,7 +53,9 @@ plugins:
 
 ## 17.3 preset：按会话组装能力
 
-`packages/preset/agent-presets`（`ctx.agentPresets`）实现**"按会话组合能力"**。
+`packages/preset/agent-preset`（在 Cordis YAML 里声明一份能力组合）和
+`packages/preset/agent-preset-registry`（注册表服务 `ctx.agentPresets`）
+一起实现**"按会话组合能力"**。
 回顾 `docs/architecture.md` 的"Where new behavior goes"：
 
 > Give one session a different capability set | compose an agent preset; a
@@ -69,7 +71,7 @@ plugins:
 
 ## 17.4 settings 与 credentials：两个用户接缝
 
-- **`ctx.settings`**（`packages/settings/settings` + `settings-file`）：
+- **`ctx.settings`**（`packages/settings/settings`）：
   用户设置接缝——"用户想改什么"（主题、偏好、模型默认值）通过它读写；
 - **`ctx.credentials`**（`packages/credentials/credentials` + `credentials-local`）：
   凭据接缝——API key 等敏感信息，不写死在配置里，通过凭据提供方读取
@@ -118,7 +120,7 @@ AGENTS.md 有一条规则：
 
 1. 打开 `docs/config-catalog.md`，找一个你熟悉的包（如 `dsh-llm` 或
    `dsh-tool-bash`），读它的 config 类型与 `Requires:` 行。
-2. 找一个 preset（`packages/preset/agent-presets` 或示例），理解它是怎么
+2. 找一个 preset（`packages/preset/agent-preset-registry` 或示例），理解它是怎么
    "按会话组装"插件的。
 3. 思考题：为什么"配置错误要大声失败"而不是"尽量容错继续跑"？
    （答案见附录 C。）

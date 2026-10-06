@@ -51,9 +51,13 @@ export interface PromptSection {
 ## 13.3 scope：把注册限定到某个 agent
 
 **scope 是 dsh 让"一个进程里跑多个不同 Agent"的核心机制**。
-`docs/subsystems/scope.md` 与多篇 Agent Note
-（`2026-07-08-agent-scope-contexts`、`2026-07-12-agent-scope-runtime-design`、
-`2026-07-12-scoped-layers-store`）讲透了它。
+`docs/subsystems/scope.md` 讲透了它：`packages/core/scope` 提供身份
+（`ScopeKey`）、路由载体（`Scoped<T>`）与分层存储的原语；
+`packages/core/agent-loop/README.md` 承担生命周期决策，
+`packages/core/scope/README.md` 承担可调用 API 与过滤语义。
+（早期三篇 Agent Note `2026-07-08-agent-scope-contexts`、
+`2026-07-12-agent-scope-runtime-design`、`2026-07-12-scoped-layers-store`
+已于 2026-09-04 / 2026-09-30 归档，只作历史记录，不再是当前权威。）
 
 ### 问题
 
@@ -73,8 +77,11 @@ A 会话注册的工具出现在 B 会话，B 会话的注入上下文污染 A�
 
 ### 分层注册表（scoped layers store）
 
-`2026-07-12-scoped-layers-store` 描述了实现：**注册按"层（layer）"归档**，
-读取时按"全局层 + 观察者作用域链"合并。
+实现被抽成共享原语 `packages/core/scope`：**注册按"层（layer）"归档**，
+读取时按"全局层 + 观察者作用域链"合并。抽成共享原语的原因，是
+`tools.register`/`tools.restrict`/`tools.guard`、`SystemPrompt.section`/
+`.tools`/`.variable`、`CommandRuntime.register` 这些门面都长同一个形状
+（一个全局层 + 一个精确 agent 层），重复的只是"生命周期编排"而不是注册策略。
 
 ```mermaid
 flowchart TB

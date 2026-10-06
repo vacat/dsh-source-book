@@ -1,6 +1,6 @@
 # 附录 D 延伸资源
 
-> 继续深入 dsh 的资源清单。以 commit `47f943859b`（2026-08-13）为基准。
+> 继续深入 dsh 的资源清单。以 commit `49120665f`（2026-09-26）为基准。
 
 ## 1. dsh 仓库自带文档（第一手）
 
@@ -20,18 +20,31 @@
 
 | 主题 | 推荐阅读 |
 |------|---------|
-| 会话 | `2026-06-11-event-sourced-sessions`、`2026-06-18-session-surface` |
+| 会话 | `docs/subsystems/session.md`；Agent Note `2026-06-11-event-sourced-sessions`、`2026-06-18-session-surface` |
 | 请求可重建 | `2026-07-05-reconstructable-requests` |
 | 版本机制 | `2026-08-10-session-log-version-mechanism` |
-| scope | `2026-07-12-agent-scope-runtime-design`、`2026-07-12-scoped-layers-store` |
-| 能力接缝 | `2026-06-13-capability-seams`、`2026-06-17-filesystem-capability-seam`、`2026-06-24-web-capability-seam` |
+| agent 生命周期 | `docs/subsystems/core.md`（Creation and ownership） |
+| scope | `docs/subsystems/scope.md` |
+| 能力接缝 | Agent Note `2026-06-13-capability-seams`、`2026-06-24-web-capability-seam`；`docs/subsystems/filesystem.md` |
 | LLM 适配器 | `2026-06-13-twin-llm-adapters`、`2026-07-14-provider-routed-llm-adapters` |
 | 工具 | `2026-07-07-tool-call-timeout-policy`、`2026-07-08-tool-output-spill-files`、`2026-07-02-tool-render-intent-union` |
-| 持久化 | `2026-06-14-session-persistence`、`2026-08-08-bounded-session-persistence-write-batching` |
-| 压缩 | `2026-07-10-after-call-compaction-pressure-and-overflow-recovery` |
-| 子代理 | `2026-06-21-subagent-capability-seam`、`2026-07-28-continuable-subagent-conversations` |
-| 测试 | `2026-06-19-acp-snapshot-tests`、`2026-06-19-real-api-e2e-ci` |
-| 流程 | `2026-07-26-frozen-agent-note-archive`、`2026-07-05-uniform-agent-note-format` |
+| 持久化 | `docs/subsystems/persistence.md` |
+| 压缩 | `docs/subsystems/compaction.md` |
+| 子代理 | `docs/subsystems/subagent.md`；Agent Note `2026-07-28-continuable-subagent-conversations` |
+| 测试 | `docs/testing.md`；Agent Note `2026-06-19-real-api-e2e-ci` |
+| 流程 | `.agents/notes/README.md`；Agent Note `2026-07-26-frozen-agent-note-archive` |
+
+> **关于归档**：`docs/subsystems/*.md` 是**代码生成的当前权威**。上表原先
+> 推荐的若干 Agent Note（`2026-06-14-session-persistence`、
+> `2026-06-17-filesystem-capability-seam`、`2026-06-18-agent-lifecycle-and-ownership-contracts`、
+> `2026-06-19-acp-snapshot-tests`、`2026-06-21-subagent-capability-seam`、
+> `2026-07-05-uniform-agent-note-format`、
+> `2026-07-10-after-call-compaction-pressure-and-overflow-recovery`、
+> `2026-07-12-agent-scope-runtime-design`、`2026-07-12-scoped-layers-store`、
+> `2026-08-08-bounded-session-persistence-write-batching`、
+> `2026-08-13-session-content-search-opt-in`）已于 2026-09-04 / 2026-09-30
+> 归档到 `.agents/notes/archived/`：它们**永久冻结、不再作为当前行为依据**，
+> 只在你需要历史决策时去读。
 
 ## 3. 配套书籍
 

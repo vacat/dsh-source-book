@@ -23,7 +23,8 @@ dsh 把"Agent"拆成**接口**与**默认实现**两层：
 ## 6.2 创建、所有权与销毁
 
 `docs/subsystems/core.md` 的 "Creation and ownership" 一节讲清了谁拥有什么。
-关键契约（Agent Note `2026-06-18-agent-lifecycle-and-ownership-contracts`）：
+它取代了早期 Agent Note `2026-06-18-agent-lifecycle-and-ownership-contracts`
+（已于 2026-09-04 归档，只作历史）。关键契约：
 
 - **一个会话对应一个 Agent**：`ctx.agents`（`AgentRegistry`）负责创建与登记；
 - **所有权明确**：谁创建，谁负责销毁；`agent/disposed` 事件广播销毁；
@@ -62,7 +63,7 @@ flowchart TB
 
 dsh 有一个重要的运行期概念：**Initiating Agent（发起者）**。
 `docs/subsystems/core.md` 的 "Initiating Agent" 一节，以及
-`core/agent/src/` 里的 `withInitiator`：
+`packages/core/agent/src/` 里的 `withInitiator`：
 
 - 每当一个 agent 开始一个回合/步骤，它成为那个上下文的"发起者"；
 - 工具执行、事件派发时，代码可以 `ctx.agents.requireInitiator()`
@@ -85,16 +86,20 @@ const agent = ctx.agents.requireInitiator()
 | `agent/created` / `agent/disposed` | emit | 生命周期广播 |
 | `agent/status` | emit | 状态变化（idle/running） |
 | `agent/error` | emit | 失败在活边界上报 |
-| `agent/inbox/inserted` / `discarded` / `claimed` | emit | 收件箱投递轨迹 |
+| `agent/assistant-stream` | emit | 运行期流式帧（attemptId + revision，不进日志） |
+| `agent/inbox/inserted` / `discarded` / `claimed` | emit | 收件箱投递轨迹（运行期通知） |
 | `agent/pre-step` | **waterfall** | 决定"模型这次看到什么"（改写/拒绝） |
 | `agent/request` | **waterfall** | 决定请求配置（provider/model/参数） |
 | `agent/request-error` | **waterfall** | 请求失败后的处置（可让插件决定重试） |
 | `agent/turn-stopping` | **serial** | 回合即将停止时依次给插件最后机会 |
-| `agent/session-start` | emit | 会话开始 |
 
 **注意模式分布**：凡是"要改决策"的（pre-step、request、request-error）都是
 waterfall；凡是"只通知"的（created、status、error）都是 emit；唯一一个
 "按序给机会"的是 serial 的 turn-stopping。这与第 3 章的模式选择规则完全一致。
+
+> 上表全是**运行期**事件。收件箱还有一个**持久**事件 `agent/inbox/spliced`
+> ——它由 `Session.append()` 落进日志，是待处理消息列表的规范化变更记录
+> （`inserted/discarded/claimed` 只是它之上的运行期通知）。
 
 ## 6.6 本章小结
 

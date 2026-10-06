@@ -3,7 +3,7 @@
 > **本章目标**
 > 1. 理解 `ctx.llm`（`LlmRuntime`）的定位：模型适配器注册表 + 流式调用 API；
 > 2. 掌握 `StreamChunk` 词汇与 `BlockAssembler` 的装配逻辑；
-> 3. 理解三个适配器实现：llm-deepseek / llm-pi-ai / llm-replay；
+> 3. 理解适配器实现：llm-deepseek / llm-pi-ai，以及测试侧的 llm-replay；
 > 4. 理解 retry 策略与 token 计量如何接入。
 
 ## 8.1 `ctx.llm`：一个"适配器注册表 + 流式调用"
@@ -35,9 +35,10 @@ export interface GenerateOptions {
   provider: string                       // 注册的路由，选择适配器实例
   model: string
   reasoningEffort?: ReasoningEffortId
-  messages: Message[]                    // 顺序对话消息（loop 从日志派生）
+  messages: RequestMessage[]             // 顺序对话消息（loop 从日志派生）
   system?: string                        // 系统提示（适配器映射到 provider 的系统槽）
   tools?: ToolSchema[]                   // 工具 schema
+  toolHistory?: ToolHistory              // 已记录的工具增删历史（路由投影用）
   temperature?: number
   maxTokens?: number
   stop?: string[]
@@ -60,7 +61,7 @@ export interface GenerateOptions {
 | { type: 'block-start'; index: number; blockType: ContentBlockType }  // 内容块开始
 | { type: 'text-delta'; index: number; text: string }                 // 文本增量
 | { type: 'reasoning-delta'; index: number; text: string }            // 思考增量
-| { type: 'tool-call-delta'; index: number; id: CallId; name?: string; argumentsDelta: string }
+| { type: 'tool-call-delta'; index: number; id: ToolCallId; name?: string; argumentsDelta: string }
 | { type: 'block-end'; index: number; block: ContentBlock }           // 内容块结束
 | { type: 'usage'; usage: TokenUsage }
 | { type: 'finish'; reason: ... }
@@ -79,22 +80,33 @@ export interface GenerateOptions {
 - `finish`：结束原因（completed / max-tokens / error / aborted）；
 - `usage`：token 用量。
 
-第 7 章 `step()` 里它的用法：
+第 7 章 `step()` 里，装配被包在 `AssistantStreamAttempt`（`live`）里：
+`live.push(chunk)` 先给块打上时间戳存进持久流累积器，再把同一份块喂给
+`BlockAssembler` 装配内容块，最后对外发一帧 UI 事件；请求成功时
+`live.settle('assistant/message', ...)` 把
+`live.stream`（精确带时间流）和 `live.blocks()`（装配好的内容块）一起写进
+同一条事件：
+
 ```ts
-const assembler = new BlockAssembler()
+const live = new AssistantStreamAttempt(session.id, ++attempt, ...)
 for await (const chunk of stream) {
-  chunkSeqs.push(this.session.append('assistant/chunk', { turn, step, chunk }).seq)
-  assembler.push(chunk)
+  live.push(chunk)                    // 累积精确流 + 装配内容块 + 发 UI 帧
 }
-const message = createAssistantMessage({ content: assembler.blocks(), ... })
+live.settle('assistant/message', () =>                           // 成功
+  this.session.append('assistant/message',
+    { turn, step, message, stream: live.stream }, { surfaceOp: 'append' }).seq)
+live.settle('assistant/attempt', () =>                           // 失败/取消
+  this.session.append('assistant/attempt', { turn, step, stream: live.stream }).seq)
 ```
 
-**注意装配顺序与日志顺序的对应**：每个 chunk 先落日志、再装配——
-日志里有"原始增量"，装配结果里有"完整消息"，两者通过 `sourceEventSeqs` 关联。
+**注意"流"与"块"在同一条事件里**：`assistant/message` 既带装配好的完整消息
+（供模型和 surface 使用），又带精确的带时间流（供逐字回放）；没有产出消息的
+尝试则单独落 `assistant/attempt`。
 
-## 8.5 三个适配器实现
+## 8.5 适配器实现
 
-dsh 的 `packages/llm/` 下有三个 provider 适配器，正好构成一条"演进"链：
+dsh 的 `packages/llm/` 下的上市适配器有两个（`llm-deepseek` / `llm-pi-ai`），
+另有回放用的 `llm-replay` 落在测试支持组里——它们正好构成一条"演进"链：
 
 ### llm-deepseek：第一方适配器
 
@@ -116,9 +128,10 @@ dsh 的 `packages/llm/` 下有三个 provider 适配器，正好构成一条"演
 
 ### llm-replay：可回放的适配器
 
-`packages/llm/llm-replay/` 用于**回放**：把日志里记录的请求/响应重放成
-"模型输出"，配合快照测试在无 key 时验证行为。它是"请求可重建"在测试侧的
-延伸——第 16 章再展开。
+`packages/test-support/llm-replay/` 用于**回放**：它短路 `llm/stream`，把
+录好的会话 JSONL 里的模型块重建成"模型输出"，配合快照测试在无 key 时验证
+行为。它是"请求可重建"在测试侧的延伸，所以归在 `test-support` 而不是
+上市适配器组——第 16 章再展开。
 
 ### retry：`llm-retry` 包
 
@@ -137,7 +150,7 @@ dsh 的 `packages/llm/` 下有三个 provider 适配器，正好构成一条"演
 | 维度 | pi | dsh | codex |
 |------|-----|-----|-------|
 | 统一接口 | `Models.streamSimple` | `ctx.llm.stream` | `ModelClient` |
-| 适配器 | providers/*.ts（几十家） | llm-deepseek / llm-pi-ai / llm-replay | model-provider 等 |
+| 适配器 | providers/*.ts（几十家） | llm-deepseek / llm-pi-ai | model-provider 等 |
 | 流词汇 | AssistantMessageEvent | StreamChunk | Responses API item |
 | 装配 | 事件里带 partial 快照 | BlockAssembler 显式装配 | 官方 item 流 |
 | 重试 | 无内建 | agent/request-error 瀑布 | 内建状态机 |
@@ -150,7 +163,7 @@ dsh 的 `packages/llm/` 下有三个 provider 适配器，正好构成一条"演
 
 - `ctx.llm` = 适配器注册表 + 流式调用 API + `llm/stream` 瀑布；
 - `GenerateOptions` 统一请求，`StreamChunk` 统一流，`BlockAssembler` 装配；
-- 三个适配器：deepseek（第一方）、pi-ai（复用生态）、replay（回放）；
+- 适配器：deepseek（第一方）、pi-ai（复用生态），另有测试侧的 replay（回放）；
 - 重试走 `agent/request-error` 瀑布（插件决定），token 计量走 `token-meter`；
 - "可回放即适配器"是 dsh 独有的设计。
 

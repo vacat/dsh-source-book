@@ -14,7 +14,12 @@
 | 角色 | 包 |
 |------|-----|
 | Definition | `session-persistence`（`ctx.sessionPersistence`） |
-| Provider | `session-persistence-jsonl`（JSONL 文件） / `session-persistence-sqlite`（SQLite） |
+| Provider | `session-persistence-jsonl`（每个会话一个压缩 JSONL 日志） |
+
+接缝只导出一套**与服务定义无关的句柄契约**（`create` / `open` / `stat` /
+`list` / `export`、`SessionHandle`、稳定的错误类）；别的后端只要实现同一套契约
+即可，共享的 `runPersistenceContract` / `runLiveWritePathContract` 测试套件
+钉住所有后端必须一致的可观测行为。
 
 **写盘策略**（Agent Note `2026-06-11-event-sourced-sessions`）：
 
@@ -27,8 +32,14 @@
   `session/flush` 检查点排空；
 - 所以"模型请求进行中"不会因磁盘慢而卡住，但回合结束保证落盘。
 
-**版本管理**：SQLite 后端用单调的 `SCHEMA_VERSION`；JSONL 后端在首行写
-版本头，遇到未来格式先拒绝并提示升级方向（第 4 章的版本机制）。
+**版本管理**：会话日志用 `SESSION_FORMAT_VERSION`（当前 `4`）。句柄只暴露
+当前逻辑记录；后端必须在返回句柄前把**支持的历史世代**转换成当前格式
+（JSONL 后端就带着这样一份静态的世代目录），遇到**比自己新**的格式则拒绝
+并提示升级 harness，遇到不认识的、又没有 `ignorable` 标记的事件类型也拒绝
+（第 4 章的版本机制）。顺带一提，**物理介质**各有自己的版本号、策略也不同：
+`storage-sqlite` 把物理布局版本存在 `PRAGMA user_version` 里，版本不符就
+直接拒绝、不迁移；`session-query-sqlite` 是**可丢弃的派生索引**，schema
+版本不符时就地重建。
 
 ## 14.2 `ctx.storage`：非会话存储枢纽
 
@@ -81,19 +92,23 @@ flowchart TB
 
 ### 何时压缩：after-call 压力与溢出恢复
 
-Agent Note `2026-07-10-after-call-compaction-pressure-and-overflow-recovery`：
-压缩触发点是**调用后压力**——一次工具调用后上下文触顶，才触发压缩并恢复。
-对比 codex 在采样循环里"发现触顶立刻压缩再继续"（agent-book 第 8 章），
-dsh 把它放在**维护阶段（maintenance）**，让循环本体保持干净
-（agent-book 第 9 章讲过的分歧）。
+`docs/subsystems/compaction.md`：压缩触发点是**调用后压力**——一次工具调用后
+上下文触顶，才触发压缩并恢复（`CompactionTrigger = 'pressure' |
+'context-overflow'`）。对比 codex 在采样循环里"发现触顶立刻压缩再继续"
+（agent-book 第 8 章），dsh 把它放在**维护阶段（maintenance）**，让循环本体
+保持干净（agent-book 第 9 章讲过的分歧）。（早期 Agent Note
+`2026-07-10-after-call-compaction-pressure-and-overflow-recovery` 已于
+2026-09-30 归档，只作历史。）
 
 ## 14.4 会话查询与标题：从日志派生的产品功能
 
 两个"日志派生"的例子，体现"日志即真相"的辐射面：
 
 - **`ctx.sessionQuery`**：会话读取、追踪、过滤、搜索（`session-query` +
-  `session-query-sqlite`）。搜索甚至支持**内容检索 opt-in**
-  （`2026-08-13-session-content-search-opt-in`）；
+  `session-query-sqlite`）。内容检索是**部署可选**的：provider 用
+  `openAt: 'never'` 关掉索引，此时 `searchSessions`/`searchEvents` 返回
+  `SESSION_QUERY_SEARCH_DISABLED`，而精确读取、过滤、追踪照常
+  （`docs/subsystems/session-query.md`）；
 - **`ctx.sessionTitle`**：日志驱动的会话标题生成（`session-title-first-prompt-llm`
   / `session-title-all-prompts-llm`）。AGENTS.md 说 "Generate session titles |
   register the sole ctx.sessionTitle provider"——标题也从日志派生，可审计。

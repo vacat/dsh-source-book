@@ -11,11 +11,12 @@
 | `turn/start` / `turn/end` | emit | 回合边界（end 带 TurnEndReason） |
 | `step/start` / `step/end` | emit | 步骤边界 |
 | `user/message` | emit | 用户消息/注入上下文（surface: append） |
-| `assistant/chunk` | emit | 每个流式块（token 级回放） |
-| `assistant/message` | emit | 装配完成的 assistant 消息（surface: append） |
+| `assistant/message` | emit | 装配完成的 assistant 消息（内嵌精确带时间流；surface: append） |
+| `assistant/attempt` | emit | 未产出消息的尝试结算（失败/重试/取消/流中断） |
 | `tool/result` | emit | 工具结果（surface: append） |
 | `request/header` | emit | 请求非历史状态（EpochHeader） |
 | `request/context` | emit | 路由容量（provider/model/contextWindow） |
+| `agent/inbox/spliced` | emit | 收件箱持久变更（规范化 splice：start/removedCount/inserted） |
 | `session/end-seed` | emit | 种子边界 |
 | `session/flush` | parallel | 持久化检查点（回合结束排空写盘） |
 
@@ -26,12 +27,12 @@
 | `agent/created` / `agent/disposed` | emit | 生命周期 |
 | `agent/status` | emit | 状态变化（idle/running） |
 | `agent/error` | emit | 失败在活边界上报 |
-| `agent/inbox/inserted` / `discarded` / `claimed` | emit | 收件箱轨迹 |
+| `agent/assistant-stream` | emit | 运行期流式帧（attemptId + revision，不进日志） |
+| `agent/inbox/inserted` / `discarded` / `claimed` | emit | 收件箱运行期通知（对应持久事件见 Session 表） |
 | `agent/pre-step` | **waterfall** | 决定模型看到什么（改写/拒绝） |
 | `agent/request` | **waterfall** | 决定请求配置 |
 | `agent/request-error` | **waterfall** | 请求失败处置（可重试） |
 | `agent/turn-stopping` | **serial** | 回合停止前依次给机会 |
-| `agent/session-start` | emit | 会话开始 |
 
 ## 能力事件（给接缝挂策略/适配器）
 

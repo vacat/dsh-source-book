@@ -29,7 +29,7 @@ flowchart LR
 
 | 域 | 例子 | 持久化？ | 载荷 | 用途 |
 |----|------|---------|------|------|
-| **Session** | `turn/start`、`user/message`、`assistant/chunk`、`tool/result` | 是（进日志） | 可重建的纯数据 | 模型看到的一切、审计、回放 |
+| **Session** | `turn/start`、`user/message`、`assistant/message`、`tool/result` | 是（进日志） | 可重建的纯数据 | 模型看到的一切、审计、回放 |
 | **Agent（`agent/*`）** | `agent/pre-step`、`agent/request`、`agent/status`、`agent/turn-stopping` | 否（运行期） | 活的 `Agent` 对象 | 观察/拦截进行中的工作 |
 | **Capability** | `tools/*`、`fs/*`、`telemetry/*` | 否 | 策略/适配器相关 | 给能力接缝挂行为，不 import 循环 |
 

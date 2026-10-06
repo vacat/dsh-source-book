@@ -35,7 +35,7 @@
 | `ctx.sandbox` | 进程沙箱接缝 |
 | `ctx.sandboxPolicy` | 沙箱策略归属方 |
 | `ctx.fs` | 文件系统接缝 |
-| `ctx.codeRuntime` | 代码执行接缝 |
+| `ctx.ptcRuntime` | PTC 代码执行接缝（模型写程序、调用宿主绑定） |
 
 ## 更多能力
 
@@ -62,7 +62,7 @@
 
 | 服务 | 拥有什么 |
 |------|---------|
-| `ctx.sessionPersistence` | 会话持久化接缝（jsonl/sqlite） |
+| `ctx.sessionPersistence` | 会话持久化接缝（当前 provider：jsonl） |
 | `ctx.storage` | 非会话存储枢纽 |
 | `ctx.storageDomain` | 领域数据设施 |
 | `ctx.spillStore` | 溢出存储接缝 |
@@ -75,7 +75,6 @@
 
 | 服务 | 拥有什么 |
 |------|---------|
-| `ctx.invariants` | 包自有运行时不变量注册表 |
 | `ctx.typert` | 运行时类型注册表 |
 | `ctx.typertGateway` | Typert 调用网关 |
 | `ctx.webServer` | HTTP 路由注册 |

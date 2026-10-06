@@ -106,17 +106,26 @@ Agent Note 把不变量带来的收益总结成三个推论：
 
 ## 5.5 这条不变量如何被"强制"
 
-光写进文档不够，dsh 把"模型可见 ⟺ 可记录"做成了**运行时不变量**。
+光写进文档不够，dsh 用几层可机械检查的机制把它钉死（第 16 章展开）：
 
-- AGENTS.md 里有一条关于不变量的一般规则：
-  > **Runtime invariants assert owned relationships.** Check authoritative
-  > event streams or mutable data, not service or method presence...
-- dsh 有 `packages/invariants`（`ctx.invariants`）——**包自有不变量注册表**，
-  把可机械检查的不变量接进一个执行的顶层门禁（第 16 章讲测试与门禁时展开）。
+- `docs/architecture.md` 的 **"Model-visible means logged"** 本身就是硬约束：
+  > Every model request must be reconstructable from the log. New
+  > model-visible inputs require session events.
+- **`SessionEventMap` 类型 + required-on-read**：不认识某个事件类型的构建会
+  拒绝加载该日志（除非事件带 `ignorable: true`）——把"漏记"变成"读不回来"；
+- **插件自有的消息投影**：要改消息内容必须注册一个纯投影
+  （`docs/subsystems/session.md` 的 "Plugin-owned message projections"），
+  可被独立调用核对；
+- **执行的顶层门禁**（`scripts/` 下的 `verify-*`，跑在 `doc-sync` / CI 里）
+  与**无 key 快照测试**（第 16 章）从两侧夹住。
+
+（早先 dsh 有一个包自有的运行时不变量注册表 `ctx.invariants`，把各包的契约
+检查接进顶层门禁；它在 v0.2.0-rc.2 被整体移除，见
+`docs/upgrade-guide/v0.2.0-rc.2/remove-runtime-invariants/guide.md`。）
 
 **实践含义**：如果你给 dsh 加一个"模型可见的新输入"（比如新的上下文注入），
-你**必须**同时加一个会话事件来记录它。想偷懒"只注入不记录"，会被不变量
-抓住——这正是 dsh 把工程纪律变成"类型/不变量可检查"的体现。
+你**必须**同时加一个会话事件来记录它。想偷懒"只注入不记录"，会在日志加载
+或快照门禁处暴露——这正是 dsh 把工程纪律变成"可执行检查"的体现。
 
 ## 5.6 一个直接的收获：快照测试（snapshot test）
 
@@ -134,7 +143,7 @@ Agent Note 把不变量带来的收益总结成三个推论：
 - 铁律：**模型可见 ⟺ 可记录**（更精确：durably referenced）；
 - 请求 = 日志投影的历史 + `EpochHeader` 记录的非历史状态 + 深冻结；
 - 推论：前缀缓存稳定（涌现）、字节级审计回放、带归因的分叉；
-- 不变量用 `ctx.invariants` 强制执行，加模型可见输入必须加会话事件；
+- 加模型可见输入必须加会话事件，由类型（required-on-read）与门禁强制；
 - 快照测试依赖这条地基。
 
 ## 动手练习

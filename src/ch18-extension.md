@@ -55,7 +55,7 @@ cookbook 列出几条"硬规则"，每一条都有背后的工程原因：
 
 | 规则 | 为什么 |
 |------|--------|
-| **参数自动校验**：`defineTool` 在 `execute` 前校验模型生成的 arguments | 模型的输出不可信，必须在边界校验（运行时参数校验，见 Agent Note `2026-06-11-runtime-arg-validation`） |
+| **参数自动校验**：`defineTool` 在 `execute` 前校验模型生成的 arguments | 模型的输出不可信，必须在边界校验（`validateArgs()`，见 `packages/core/tools/README.md` 与 `docs/cookbook/adding-a-tool.md`） |
 | **注册借用只读定义**：注册后不要改 schema 或回调 | 类型化同进程贡献不是序列化边界；要换工具就"卸载旧效果 + 注册新效果" |
 | **执行身份受保护**：`exec.token` 不透明；`callId/name/arguments/agent/token/signal` 不可变 | 防止策略层篡改执行身份 |
 | **返回一个规范 JSON 值**：`output.schema` 声明，`execute` 只返回值 | 让返回值可序列化、可校验、可做 UI |

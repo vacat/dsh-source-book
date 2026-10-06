@@ -46,7 +46,7 @@ pi（可读）、dsh（可扩展）、codex（可生产）三个实现。
 
 本书所有代码引用（文件路径与行号）均基于 dsh 仓库 commit：
 
-> **`47f943859b`（2026-08-13）**
+> **`49120665f`（2026-09-26）**
 
 仓库：<https://github.com/deepseek-ai/deepseek-harness>
 

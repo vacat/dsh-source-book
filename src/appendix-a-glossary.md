@@ -18,7 +18,7 @@
 
 ## B
 
-**Branded ID**：跨边界不透明 id（`Branded<B>`），如 `CallId`、`ApprovalRequestId`。（第 15 章）
+**Branded ID**：跨边界不透明 id（`Branded<B>`），如 `ToolCallId`、`ApprovalRequestId`。（第 15 章）
 
 **Bundle（分发包）**：可分发的能力包（base / web-app / headless）。（第 1、17 章）
 
@@ -68,13 +68,14 @@
 
 **Initiating Agent（发起者）**：当前工作的归属 agent。（第 6 章）
 
-**invariant（不变量）**：包自有运行期检查（`ctx.invariants`）。（第 16 章）
+**invariant（不变量）**：可机械检查的契约；dsh 把它接进执行的顶层门禁
+（第 16 章）。早先的 `ctx.invariants` 注册表已在 v0.2.0-rc.2 移除。
 
 **isolate realm**：preset 里隔离服务实例的作用域。（第 17 章）
 
 ## L
 
-**llm-replay**：可回放的 LLM 适配器，支撑快照测试。（第 8 章）
+**llm-replay**：可回放的 LLM 插件（`packages/test-support/llm-replay`），短路 `llm/stream` 重放录好的模型块，支撑无 key 的快照测试。（第 8 章）
 
 **Model-visible ⟺ logged**：模型可见的必可记录。（第 5 章）
 
@@ -84,7 +85,7 @@
 
 **Phase**：Agent 状态机（idle / maintenance / running）。（第 7 章）
 
-**Preset（预设）**：按会话组装能力集（agent-presets）或权限组合（permission-presets）。（第 15、17 章）
+**Preset（预设）**：按会话组装能力集（`agent-preset` + `agent-preset-registry`）或权限组合（permission-presets）。（第 15、17 章）
 
 **Profile（配置文件）**：一个产品形态的 bundle 组合。（第 1 章）
 

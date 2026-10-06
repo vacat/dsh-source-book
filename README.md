@@ -29,7 +29,7 @@
 
 ### 代码版本
 
-本书基于 dsh 仓库 commit `47f943859b`（2026-08-13）。dsh 仓库：<https://github.com/deepseek-ai/deepseek-harness>
+本书基于 dsh 仓库 commit `49120665f`（2026-09-26）。dsh 仓库：<https://github.com/deepseek-ai/deepseek-harness>
 
 ### 全书结构
 
